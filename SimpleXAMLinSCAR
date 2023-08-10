@@ -1,0 +1,68 @@
+-- declaring SCAR function that can be called to create and initialize the new UI element
+
+function OverlayButtons_ShowRssUIButton()
+
+-- variable for the markup code
+local xaml =
+
+-- XAML codeblock goes in [[<code>]] reference nescessary resource dictionaries from the archives with styles, templates, bindings, and dependencies not used by default in the game content being modded. 
+
+
+[[<Grid xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation">
+		<Button HorizontalAlignment="Right"
+		        VerticalAlignment="Top"
+				SnapsToDevicePixels="True"
+		        Margin="{StaticResource HUDPanelMargin}"
+		        Style="{StaticResource PrimaryRaisedTextButton}" 
+		        Command="{Binding [rss_button_command]}"
+	        	Content="{Binding [rss_button_text]}" />
+</Grid>]]
+
+			-- register code-block variable as a new element within the VisualTree, name it, declare hit test visibility, and create the DataContext the element uses in it's DataContext property, register the function that will be called from the elements Command property.
+
+			UI_AddChild("", "XamlPresenter", "RssUI", { 
+					IsHitTestVisible = true, 
+					Xaml = xaml, 
+					DataContext = UI_CreateDataContext({
+							rss_button_text = "Resources",
+							rss_button_command = UI_CreateCommand("OverlayButtons_RssUIButtonClicked")
+						}) 
+				})
+end
+
+
+function OverlayButtons_HideRssUIButton()
+	UI_Remove("RssUIButton")
+end
+
+
+function OverlayButtons_EnableRssUIButton(enabled)
+	UI_SetPropertyValue("RssUI.RssUIButton", "IsEnabled", enabled)
+end
+
+
+function OverlayButtons_RssUIButtonClicked(elementName, eventName)
+	OverlayButtons_EnableRssUIButton(false)
+if _overlayui.rssOnOff == true then
+		_overlayui.rssOnOff = false
+	elseif _overlayui.rssOnOff == false then
+		_overlayui.rssOnOff = true
+	end
+	OverlayButtons_RssUIButton()
+end
+
+--? @shortdesc 
+--? @extdesc 
+--? @args nil, called by "<prefix>_<elementName>ButtonClicked(elementName, eventName)"
+--? @result Open / Close the display.
+function OverlayButtons_RssUIButton()	
+	OverlayButtons_HideRssUIButton()
+	OverlayButtons_ShowRssUIButton()
+	if _overlayui.rssOnOff == true then
+		OverlayButtons_ShowStatsUI(false)
+		_overlayui.rssOnOff = false
+	elseif _overlayui.rssOnOff == false then
+		OverlayButtons_ShowStatsUI(true)
+		_overlayui.rssOnOff = true
+	end
+end

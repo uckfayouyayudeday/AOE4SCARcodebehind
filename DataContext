@@ -1,0 +1,646 @@
+function UnitsDisplay_Start()
+	local localPlayer = Core_GetPlayersTableEntry(Game_GetLocalPlayer())
+
+
+	UnitsDisplay_CreateUnitsUI()
+	UnitsDisplay_ShowRssUIButton()
+	for i, player in pairs(PLAYERS) do
+		local vars
+		unitsDisplay.myvars = {
+		vars = tostring(player.id)}
+		
+		local vals = {
+			showUnitsUI = false,
+			showUnitsUI = false,
+			popval = Loc_Empty(),
+		} 
+		table.insert(unitsDisplay.myvars, 1, vals)
+	end
+end
+
+	function UnitsDisplay_CreateDataContext()
+		
+		local localPlayer = Core_GetPlayersTableEntry(Game_GetLocalPlayer())
+		--print("function UnitsDisplay_CreateDataContext() ; local localPlayer = Core_GetPlayersTableEntry(Game_GetLocalPlayer()) = ", localPlayer)
+		-- Add local player's team/player to data context first
+		--	print("unitsDisplaydataContext", "")
+		unitsDisplay.dataContext = {
+			surrendered = false,
+			showUnitsUI = false,
+			showUnitsUI = false,
+			workerToolTip = Loc_GetString(11232301), -- "Worker Population"
+			minfantryTooltip = Loc_GetString(11163690), -- "Melee"
+			rinfantryTooltip = Loc_GetString(11204400), -- "Ranged"
+			mcavTooltip = Loc_GetString(11160947), -- "Cavalry"
+			rcavTooltip = Loc_GetString(11161143), -- "Horse Archers"
+			monksToolTip = Loc_GetString(11182398), -- "Monks"
+			siegeToolTip = Loc_GetString(11180349), -- "Siege Weapon"
+			navyToolTip = Loc_GetString(11199656), -- "Naval Force"
+			comnavyToolTip = Loc_GetString(11206476), -- "Fishing Boat"
+			populationToolTip = Loc_GetString(11145424), -- "Population"
+			teams = { 
+				{
+					teamIndex = localPlayer.team.index,
+					controlsObjective = false,
+					color = UI_GetColourAsString({a=255, r=World_GetRand(10, 20), g=World_GetRand(10, 20),b=World_GetRand(200, 255)}),
+
+					players = {
+						{ 	
+							playerIndex = localPlayer.index,
+							name = localPlayer.playerName.LocString,
+							color = UI_GetColourAsString({a=255, r=World_GetRand(100, 150), g=World_GetRand(200, 250), b=World_GetRand(10, 25)}),
+							workers = Loc_FormatNumber(0, 0),
+							minfantry = Loc_FormatNumber(0, 0),
+							rinfantry = Loc_FormatNumber(0, 0),
+							mcav = Loc_FormatNumber(0, 0),
+							rcav = Loc_FormatNumber(0, 0),
+							monks = Loc_FormatNumber(0, 0),
+							siege = Loc_FormatNumber(0, 0),
+							navy = Loc_FormatNumber(0, 0),
+							comnavy = Loc_FormatNumber(0, 0),
+							population = Loc_FormatNumber(0, 0),
+							surrendered = false,
+							showUnitsUI = false,
+							showUnitsUI = false,
+						}
+					}
+				}
+			}
+		}
+		
+		
+
+
+		-- Add local player's teammates
+		for i, player in pairs(localPlayer.team.players) do
+			if not player.isLocal then
+				table.insert(unitsDisplay.dataContext.teams[1].players, {
+						playerIndex = player.index,
+						name = player.playerName.LocString,
+						color = UI_GetColourAsString(Player_GetUIColour(player.id)),
+						workers = Loc_FormatNumber(0, 0),
+						minfantry = Loc_FormatNumber(0, 0),
+						rinfantry = Loc_FormatNumber(0, 0),
+						mcav = Loc_FormatNumber(0, 0),
+						rcav = Loc_FormatNumber(0, 0),
+						monks = Loc_FormatNumber(0, 0),
+						siege = Loc_FormatNumber(0, 0),
+						navy = Loc_FormatNumber(0, 0),
+						comnavy = Loc_FormatNumber(0, 0),
+						population = Loc_FormatNumber(0, 0),
+						surrendered = false,
+						showUnitsUI = false,
+						showUnitsUI = false,							--units = "0"
+					})
+				--Util_PrintTable(unitsDisplaydataContext.teams[1].players, 1)
+			end
+		end
+
+		-- Add remaining teams and players
+		for i, team in pairs(TEAMS) do
+			if team.index ~= localPlayer.team.index then 
+				local t = { 
+					teamIndex = team.index,
+					roundsWon = "0",
+					--roundTime = Loc_FormatTime_M_S(unitsDisplaytimeToWinRound, true),
+					controlsObjective = false,
+					color = "#FFFF1E00",
+					players = {}
+				}
+				for j, player in pairs(team.players) do 
+					table.insert(t.players, {
+							playerIndex = player.index,
+							name = player.playerName.LocString,
+							color = UI_GetColourAsString(Player_GetUIColour(player.id)),
+							workers = Loc_FormatNumber(0, 0),
+							minfantry = Loc_FormatNumber(0, 0),
+							rinfantry = Loc_FormatNumber(0, 0),
+							mcav = Loc_FormatNumber(0, 0),
+							rcav = Loc_FormatNumber(0, 0),
+							monks = Loc_FormatNumber(0, 0),
+							siege = Loc_FormatNumber(0, 0),
+							navy = Loc_FormatNumber(0, 0),
+							comnavy = Loc_FormatNumber(0, 0),
+							population = Loc_FormatNumber(0, 0),
+							surrendered = false,
+							showUnitsUI = false,
+							showUnitsUI = false,
+						})
+				end	
+				table.insert(unitsDisplay.dataContext.teams, t)
+			end
+		end			
+		--Util_PrintTable(unitsDisplaydataContext, 1)
+	end
+	
+	function UnitsDisplay_CreateUnitsUI()			
+		
+		local xaml =
+		[[<Grid xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" 
+		xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" 
+		xmlns:engineSharedControls="clr-namespace:WPFGUI.Shared.Controls;assembly=EngineUI"
+		xmlns:sharedConverters="clr-namespace:WPFGUI.Shared.Converters;assembly=EngineUI"
+		Style="{StaticResource FlowControl}" 
+		HorizontalAlignment="Right" 
+		VerticalAlignment="Top" 
+		SnapsToDevicePixels="True"
+		Margin="4,100,0,0"
+		Visibility="{Binding [showUnitsUI], Converter={StaticResource BoolToVis}}">
+	<Grid.Resources>
+		<!-- Tooltip style -->
+		<Style x:Key="SimpleToolTipStyle" TargetType="ToolTip">
+            <Setter Property="HasDropShadow" Value="True" />
+            <Setter Property="OverridesDefaultStyle" Value="True" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ToolTip">
+                        <ContentPresenter />
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+	</Grid.Resources>
+	<Grid Margin="6">
+		<Grid.RowDefinitions>
+			<RowDefinition Height="35"/>
+			<RowDefinition Height="Auto"/>
+			<RowDefinition Height="Auto"/>
+			<RowDefinition Height="Auto"/>
+			<RowDefinition Height="Auto"/>
+			<RowDefinition Height="Auto"/>
+		</Grid.RowDefinitions>
+		<Grid.ColumnDefinitions>
+			<ColumnDefinition Width="165" />
+	   		<ColumnDefinition Width="45" />
+			<ColumnDefinition Width="45" />
+			<ColumnDefinition Width="45" />
+			<ColumnDefinition Width="45" />
+	  		<ColumnDefinition Width="45" />
+			<ColumnDefinition Width="45" />
+			<ColumnDefinition Width="45" />
+			<ColumnDefinition Width="45" />
+			<ColumnDefinition Width="45" />
+			<ColumnDefinition Width="45" />
+			<ColumnDefinition Width="45" />
+			<ColumnDefinition Width="45" />
+			<ColumnDefinition Width="45" />
+		</Grid.ColumnDefinitions>
+		<Image Grid.Row="0" Grid.Column="1" 
+				Source="pack://application:,,,/WPFGUI;component/icons/races/common/units/villager.png"
+				Effect="{StaticResource DropShadowTextStyle}">
+			<Image.ToolTip>
+				<ToolTip Style="{StaticResource SimpleToolTipStyle}" 
+					Placement="Top"
+					Content="{Binding}" 
+					DataContext="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource Self}}" >
+					<ToolTip.ContentTemplate>
+						<DataTemplate>
+							<Border BorderThickness="1" Background="{StaticResource TooltipBackground}" Padding="8,5">
+								<TextBlock Style="{StaticResource HUDParagraphTextStyle}" Text="{Binding [workerToolTip]}" FontSize="24"/>
+							</Border>
+						</DataTemplate>
+					</ToolTip.ContentTemplate>
+				</ToolTip>
+			</Image.ToolTip>
+		</Image>
+		<Image Grid.Row="0" Grid.Column="2" 
+				Source="pack://application:,,,/WPFGUI;component/icons/races/common/units/spearman_4.png"
+				Effect="{StaticResource DropShadowTextStyle}">
+			<Image.ToolTip>
+				<ToolTip Style="{StaticResource SimpleToolTipStyle}"
+					Placement="Top"
+					Content="{Binding}" 
+					DataContext="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource Self}}" >
+					<ToolTip.ContentTemplate>
+						<DataTemplate>
+							<Border BorderThickness="1" Background="{StaticResource TooltipBackground}" Padding="8,5">
+								<TextBlock Style="{StaticResource HUDParagraphTextStyle}" FontSize="24" Text="{Binding [minfantryToolTip]}" Foreground="Snow" />
+							</Border>
+						</DataTemplate>
+					</ToolTip.ContentTemplate>
+				</ToolTip>
+			</Image.ToolTip>
+		</Image>
+		<Image Grid.Row="0" Grid.Column="3" 
+				Source="pack://application:,,,/WPFGUI;component/icons/races/common/units/archer_4.png"
+				Effect="{StaticResource DropShadowTextStyle}">
+			<Image.ToolTip>
+				<ToolTip Style="{StaticResource SimpleToolTipStyle}" 
+					Placement="Top"
+					Content="{Binding}" 
+					DataContext="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource Self}}" >
+					<ToolTip.ContentTemplate>
+						<DataTemplate>
+							<Border BorderThickness="1" Background="{StaticResource TooltipBackground}" Padding="8,5">
+								<TextBlock Style="{StaticResource HUDParagraphTextStyle}" FontSize="24" Text="{Binding [rinfantryToolTip]}" Foreground="Snow" />
+							</Border>
+						</DataTemplate>
+					</ToolTip.ContentTemplate>
+				</ToolTip>
+			</Image.ToolTip>
+		</Image>
+			<Image Grid.Row="0" Grid.Column="4" 
+				Source="pack://application:,,,/WPFGUI;component/icons/races/common/units/horseman_4.png"
+				Effect="{StaticResource DropShadowTextStyle}">
+			<Image.ToolTip>
+				<ToolTip Style="{StaticResource SimpleToolTipStyle}" 
+					Placement="Top"
+					Content="{Binding}" 
+					DataContext="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource Self}}" >
+					<ToolTip.ContentTemplate>
+						<DataTemplate>
+							<Border BorderThickness="1" Background="{StaticResource TooltipBackground}" Padding="8,5">
+								<TextBlock Style="{StaticResource HUDParagraphTextStyle}" FontSize="24" Text="{Binding [mcavToolTip]}" Foreground="Snow" />
+							</Border>
+						</DataTemplate>
+					</ToolTip.ContentTemplate>
+				</ToolTip>
+			</Image.ToolTip>
+		</Image>
+		<Image Grid.Row="0" Grid.Column="5" 
+				Source="pack://application:,,,/WPFGUI;component/icons/races/common/units/horsearcher_4.png"
+				Effect="{StaticResource DropShadowTextStyle}">
+			<Image.ToolTip>
+				<ToolTip Style="{StaticResource SimpleToolTipStyle}" 
+					Placement="Top"
+					Content="{Binding}" 
+					DataContext="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource Self}}" >
+					<ToolTip.ContentTemplate>
+						<DataTemplate>
+							<Border BorderThickness="1" Background="{StaticResource TooltipBackground}" Padding="8,5">
+								<TextBlock Style="{StaticResource HUDParagraphTextStyle}" FontSize="24" Text="{Binding [rcavToolTip]}" Foreground="Snow" />
+							</Border>
+						</DataTemplate>
+					</ToolTip.ContentTemplate>
+				</ToolTip>
+			</Image.ToolTip>
+		</Image>
+		<Image Grid.Row="0" Grid.Column="6" 
+				Source="pack://application:,,,/WPFGUI;component/icons/races/common/units/monk_3.png"
+				Effect="{StaticResource DropShadowTextStyle}">
+			<Image.ToolTip>
+				<ToolTip Style="{StaticResource SimpleToolTipStyle}" 
+					Placement="Top"
+					Content="{Binding}" 
+					DataContext="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource Self}}" >
+					<ToolTip.ContentTemplate>
+						<DataTemplate>
+							<Border BorderThickness="1" Background="{StaticResource TooltipBackground}" Padding="8,5">
+								<TextBlock Style="{StaticResource HUDParagraphTextStyle}" FontSize="24" Text="{Binding [monksToolTip]}" Foreground="Snow" />
+							</Border>
+						</DataTemplate>
+					</ToolTip.ContentTemplate>
+				</ToolTip>
+			</Image.ToolTip>
+		</Image>
+		<Image Grid.Row="0" Grid.Column="7" 
+				Source="pack://application:,,,/WPFGUI;component/icons/races/common/units/trebuchet_4.png"
+				Effect="{StaticResource DropShadowTextStyle}">
+			<Image.ToolTip>
+				<ToolTip Style="{StaticResource SimpleToolTipStyle}" 
+					Placement="Top"
+					Content="{Binding}" 
+					DataContext="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource Self}}" >
+					<ToolTip.ContentTemplate>
+						<DataTemplate>
+							<Border BorderThickness="1" Background="{StaticResource TooltipBackground}" Padding="8,5">
+								<TextBlock Style="{StaticResource HUDParagraphTextStyle}" FontSize="24" Text="{Binding [siegeToolTip]}" Foreground="Snow" />
+							</Border>
+						</DataTemplate>
+					</ToolTip.ContentTemplate>
+				</ToolTip>
+			</Image.ToolTip>
+		</Image>
+		<Image Grid.Row="0" Grid.Column="8" 
+				Source="pack://application:,,,/WPFGUI;component/icons/races/common/units/general_ship.png"
+				Effect="{StaticResource DropShadowTextStyle}">
+			<Image.ToolTip>
+				<ToolTip Style="{StaticResource SimpleToolTipStyle}" 
+					Placement="Top"
+					Content="{Binding}" 
+					DataContext="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource Self}}" >
+					<ToolTip.ContentTemplate>
+						<DataTemplate>
+							<Border BorderThickness="1" Background="{StaticResource TooltipBackground}" Padding="8,5">
+								<TextBlock Style="{StaticResource HUDParagraphTextStyle}" FontSize="24" Text="{Binding [navyToolTip]}" Foreground="Snow" />
+							</Border>
+						</DataTemplate>
+					</ToolTip.ContentTemplate>
+				</ToolTip>
+			</Image.ToolTip>
+		</Image>
+		<Image Grid.Row="0" Grid.Column="9" 
+				Source="pack://application:,,,/WPFGUI;component/icons/races/common/units/fishing_boat.png"
+				Effect="{StaticResource DropShadowTextStyle}">
+			<Image.ToolTip>
+				<ToolTip Style="{StaticResource SimpleToolTipStyle}" 
+					Placement="Top"
+					Content="{Binding}" 
+					DataContext="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource Self}}" >
+					<ToolTip.ContentTemplate>
+						<DataTemplate>
+							<Border BorderThickness="1" Background="{StaticResource TooltipBackground}" Padding="8,5">
+								<TextBlock Style="{StaticResource HUDParagraphTextStyle}" FontSize="24" Text="{Binding [comnavyToolTip]}" Foreground="Snow" />
+							</Border>
+						</DataTemplate>
+					</ToolTip.ContentTemplate>
+				</ToolTip>
+			</Image.ToolTip>
+		</Image>
+		<Image Grid.Row="0" Grid.Column="10" 
+				Source="pack://application:,,,/WPFGUI;component/icons/caster_mode/team_header/population_count.png"
+				Effect="{StaticResource DropShadowTextStyle}">
+			<Image.ToolTip>
+				<ToolTip Style="{StaticResource SimpleToolTipStyle}" 
+					Placement="Top"
+					Content="{Binding}" 
+					DataContext="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource Self}}" >
+					<ToolTip.ContentTemplate>
+						<DataTemplate>
+							<Border BorderThickness="1" Background="{StaticResource TooltipBackground}" Padding="8,5">
+								<TextBlock Style="{StaticResource HUDParagraphTextStyle}" FontSize="24" Text="{Binding [populationToolTip]}" Foreground="Snow" />
+							</Border>
+						</DataTemplate>
+					</ToolTip.ContentTemplate>
+				</ToolTip>
+			</Image.ToolTip>
+		</Image>
+		<Image Grid.Row="0" Grid.Column="11" 
+				Source="pack://application:,,,/WPFGUI;component/icons//resources/resource_popcap_icon.png"
+				Effect="{StaticResource DropShadowTextStyle}">
+			<Image.ToolTip>
+				<ToolTip Style="{StaticResource SimpleToolTipStyle}" 
+					Placement="Top"
+					Content="{Binding}" 
+					DataContext="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource Self}}" >
+					<ToolTip.ContentTemplate>
+						<DataTemplate>
+							<Border BorderThickness="1" Background="{StaticResource TooltipBackground}" Padding="8,5">
+								<TextBlock Style="{StaticResource HUDParagraphTextStyle}" FontSize="24" Text="{Binding [populationToolTip]}" />
+							</Border>
+						</DataTemplate>
+					</ToolTip.ContentTemplate>
+				</ToolTip>
+			</Image.ToolTip>
+		</Image>
+		<ItemsControl Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="12" ItemsSource="{Binding [teams]}"  >
+			<ItemsControl.ItemTemplate>
+				<DataTemplate>
+					<Grid>
+						<Grid.RowDefinitions>
+							<RowDefinition Height="Auto"/>
+							<RowDefinition Height="Auto"/>
+							<RowDefinition Height="Auto"/>
+						</Grid.RowDefinitions>
+						<Grid.ColumnDefinitions>
+							<ColumnDefinition Width="165" />
+	    					<ColumnDefinition Width="45" />
+							<ColumnDefinition Width="45" />
+							<ColumnDefinition Width="45" />
+							<ColumnDefinition Width="45" />
+	    					<ColumnDefinition Width="45" />
+							<ColumnDefinition Width="45" />
+							<ColumnDefinition Width="45" />
+							<ColumnDefinition Width="45" />
+							<ColumnDefinition Width="45" />
+							<ColumnDefinition Width="45" />
+							<ColumnDefinition Width="45" />
+							<ColumnDefinition Width="45" />
+							<ColumnDefinition Width="45" />
+							</Grid.ColumnDefinitions>
+						<ItemsControl Grid.Row="1" Grid.Column="0" ItemsSource="{Binding [players]}" Margin="0,0,4,0">
+							<ItemsControl.ItemTemplate>
+								<DataTemplate>											
+									<Grid>
+										<TextBlock FontSize="20" Text="{Binding [name]}"						
+											Style="{StaticResource HUDGray80BodyTextBlock14ptStyle}"
+											Effect="{StaticResource DropShadowTextStyle}"
+											HorizontalAlignment="Center"
+											VerticalAlignment="Center"
+											Foreground="{Binding [color]}" />
+										<Separator Background="{Binding [color]}" 
+												Visibility="{Binding [surrendered], Converter={StaticResource BoolToVis}}"
+												Effect="{StaticResource DropShadowTextStyle}" />
+									</Grid>
+								</DataTemplate>
+							</ItemsControl.ItemTemplate>
+						</ItemsControl> 
+						<ItemsControl Grid.Row="1" Grid.Column="1" ItemsSource="{Binding [players]}"  >
+							<ItemsControl.ItemTemplate>
+								<DataTemplate>
+									<TextBlock Text="{Binding [workers]}" FontSize="20"
+											Style="{StaticResource HUDGray80BodyTextBlock14ptStyle}" 
+											Effect="{StaticResource DropShadowTextStyle}"
+											HorizontalAlignment="Center"
+											Foreground="{Binding [color]}"
+											VerticalAlignment="Center" />
+								</DataTemplate>
+							</ItemsControl.ItemTemplate>
+						</ItemsControl>
+						<ItemsControl Grid.Row="1" Grid.Column="2" ItemsSource="{Binding [players]}"  >
+							<ItemsControl.ItemTemplate>
+								<DataTemplate>
+									<TextBlock Text="{Binding [minfantry]}" FontSize="20"
+											Style="{StaticResource HUDGray80BodyTextBlock14ptStyle}" 
+											Effect="{StaticResource DropShadowTextStyle}"
+											HorizontalAlignment="Center" 
+											VerticalAlignment="Center" 
+											Foreground="{Binding [color]}" />
+								</DataTemplate>
+							</ItemsControl.ItemTemplate>
+						</ItemsControl>
+						<ItemsControl Grid.Row="1" Grid.Column="3" ItemsSource="{Binding [players]}"  >
+							<ItemsControl.ItemTemplate>
+								<DataTemplate>
+									<TextBlock Text="{Binding [rinfantry]}" FontSize="20"
+											Style="{StaticResource HUDGray80BodyTextBlock14ptStyle}" 
+											Effect="{StaticResource DropShadowTextStyle}"
+											HorizontalAlignment="Center" 
+											VerticalAlignment="Center"
+											Foreground="{Binding [color]}"/>
+								</DataTemplate>
+							</ItemsControl.ItemTemplate>
+						</ItemsControl>		
+						<ItemsControl Grid.Row="1" Grid.Column="4" ItemsSource="{Binding [players]}"  >
+							<ItemsControl.ItemTemplate>
+								<DataTemplate>
+									<TextBlock Text="{Binding [mcav]}" FontSize="20"
+											Style="{StaticResource HUDGray80BodyTextBlock14ptStyle}" 
+											Effect="{StaticResource DropShadowTextStyle}"
+											HorizontalAlignment="Center" 
+											VerticalAlignment="Center"
+											Foreground="{Binding [color]}"/>
+								</DataTemplate>
+							</ItemsControl.ItemTemplate>
+						</ItemsControl>		
+												<ItemsControl Grid.Row="1" Grid.Column="5" ItemsSource="{Binding [players]}"  >
+							<ItemsControl.ItemTemplate>
+								<DataTemplate>
+									<TextBlock Text="{Binding [rcav]}" FontSize="20"
+											Style="{StaticResource HUDGray80BodyTextBlock14ptStyle}" 
+											Effect="{StaticResource DropShadowTextStyle}"
+											HorizontalAlignment="Center"
+											Foreground="{Binding [color]}"
+											VerticalAlignment="Center" />
+								</DataTemplate>
+							</ItemsControl.ItemTemplate>
+						</ItemsControl>
+						<ItemsControl Grid.Row="1" Grid.Column="6" ItemsSource="{Binding [players]}"  >
+							<ItemsControl.ItemTemplate>
+								<DataTemplate>
+									<TextBlock Text="{Binding [monks]}" FontSize="20"
+											Style="{StaticResource HUDGray80BodyTextBlock14ptStyle}" 
+											Effect="{StaticResource DropShadowTextStyle}"
+											HorizontalAlignment="Center" 
+											VerticalAlignment="Center" 
+											Foreground="{Binding [color]}" />
+								</DataTemplate>
+							</ItemsControl.ItemTemplate>
+						</ItemsControl>
+						<ItemsControl Grid.Row="1" Grid.Column="7" ItemsSource="{Binding [players]}"  >
+							<ItemsControl.ItemTemplate>
+								<DataTemplate>
+									<TextBlock Text="{Binding [siege]}" FontSize="20"
+											Style="{StaticResource HUDGray80BodyTextBlock14ptStyle}" 
+											Effect="{StaticResource DropShadowTextStyle}"
+											HorizontalAlignment="Center" 
+											VerticalAlignment="Center"
+											Foreground="{Binding [color]}"/>
+								</DataTemplate>
+							</ItemsControl.ItemTemplate>
+						</ItemsControl>		
+						<ItemsControl Grid.Row="1" Grid.Column="8" ItemsSource="{Binding [players]}"  >
+							<ItemsControl.ItemTemplate>
+								<DataTemplate>
+									<TextBlock Text="{Binding [navy]}" FontSize="20"
+											Style="{StaticResource HUDGray80BodyTextBlock14ptStyle}" 
+											Effect="{StaticResource DropShadowTextStyle}"
+											HorizontalAlignment="Center" 
+											VerticalAlignment="Center"
+											Foreground="{Binding [color]}"/>
+								</DataTemplate>
+							</ItemsControl.ItemTemplate>
+						</ItemsControl>	
+						<ItemsControl Grid.Row="1" Grid.Column="9" ItemsSource="{Binding [players]}"  >
+							<ItemsControl.ItemTemplate>
+								<DataTemplate>
+									<TextBlock Text="{Binding [comnavy]}" FontSize="20"
+											Style="{StaticResource HUDGray80BodyTextBlock14ptStyle}" 
+											Effect="{StaticResource DropShadowTextStyle}"
+											HorizontalAlignment="Center" 
+											VerticalAlignment="Center"
+											Foreground="{Binding [color]}"/>
+								</DataTemplate>
+							</ItemsControl.ItemTemplate>
+						</ItemsControl>	
+						<ItemsControl Grid.Row="1" Grid.Column="10" ItemsSource="{Binding [players]}"  >
+							<ItemsControl.ItemTemplate>
+								<DataTemplate>
+									<TextBlock Text="{Binding [population]}" FontSize="20"
+											Style="{StaticResource HUDGray80BodyTextBlock14ptStyle}" 
+											Effect="{StaticResource DropShadowTextStyle}"
+											HorizontalAlignment="Center" 
+											VerticalAlignment="Center"
+											Foreground="{Binding [color]}"/>
+								</DataTemplate>
+							</ItemsControl.ItemTemplate>
+						</ItemsControl>	
+						<ItemsControl Grid.Row="1" Grid.Column="11" ItemsSource="{Binding [players]}"  >
+							<ItemsControl.ItemTemplate>
+								<DataTemplate>
+									<TextBlock Text="{Binding [totalunits]}" FontSize="20"
+											Style="{StaticResource HUDGray80BodyTextBlock14ptStyle}" 
+											Effect="{StaticResource DropShadowTextStyle}"
+											HorizontalAlignment="Center" 
+											VerticalAlignment="Center"
+											Foreground="{Binding [color]}"/>
+								</DataTemplate>
+							</ItemsControl.ItemTemplate>
+						</ItemsControl>	
+					</Grid>
+				</DataTemplate>
+			</ItemsControl.ItemTemplate>
+		</ItemsControl>
+	</Grid>
+</Grid>]]
+		
+		
+		UnitsDisplay_CreateDataContext()
+		UI_Remove("UnitsUI")
+		UI_AddChild("", "XamlPresenter", "UnitsUI", { IsHitTestVisible = true, Xaml = xaml, DataContext = UI_CreateDataContext(_unitsDisplay.dataContext) })
+		
+		if not Rule_Exists(UnitsDisplay_UpdateUnitsUI) then 
+			Rule_AddInterval(UnitsDisplay_UpdateUnitsUI, 1.0)
+		end
+	end
+
+function UnitsDisplay_ShowRssUIButton()
+local xaml =
+[[<StackPanel xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" 
+	xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+	HorizontalAlignment="Right"
+	VerticalAlignment="Top"	
+	Orientation="Vertical">
+	<Grid>
+		<Grid.RowDefinitions>
+			<RowDefinition Height="25" />
+			<RowDefinition Height="30" />
+		</Grid.RowDefinitions>
+		<Grid.ColumnDefinitions>
+			<ColumnDefinition Width="100" />
+			<ColumnDefinition Width="Auto" />
+ 			<ColumnDefinition Width="100" />
+			<ColumnDefinition Width="Auto" />
+		</Grid.ColumnDefinitions>								
+		<Button Grid.Column="1" Grid.ColumnSpan="2" 
+				SnapsToDevicePixels="True"
+				Margin="{StaticResource HUDPanelMargin}"
+				Style="{StaticResource PrimaryRaisedTextButton}" 
+				Command="{Binding [rss_button_command]}"
+				Content="{Binding [rss_button_text]}">
+			</Button>
+	</Grid>
+</StackPanel>]]
+			
+			UI_AddChild("", "XamlPresenter", "RssUI", { 
+					IsHitTestVisible = true, 
+					Xaml = xaml, 
+					DataContext = UI_CreateDataContext({
+							rss_button_text = "Units",
+							rss_button_command = UI_CreateCommand("UnitsDisplay_RssUIButtonClicked"),
+						}) 
+				})
+	
+end
+
+
+	function UnitsDisplay_HideRssUIButton()
+	UI_Remove("RssUIButton")
+end
+
+
+function UnitsDisplay_EnableRssUIButton(enabled)
+	UI_SetPropertyValue("RssUI.RssUIButton", "IsEnabled", enabled)
+end
+
+
+function UnitsDisplay_RssUIButtonClicked(elementName, eventName)
+	UnitsDisplay_EnableRssUIButton(false)
+	--local localPlayer = Core_GetPlayersTableEntry(Game_GetLocalPlayer())
+--[[Network_CallEvent("UnitsDisplay_RssUIButton", localPlayer.index) 
+-- UI callbacks are local; this translates it across the network.]]
+	UnitsDisplay_RssUIButton()
+end
+
+function UnitsDisplay_RssUIButton()	
+	if _unitsDisplay.showUnitsUI == false then
+		UnitsDisplay_ShowUnitsUI(true)
+		_unitsDisplay.showUnitsUI = true
+	elseif _unitsDisplay.showUnitsUI == true then
+		UnitsDisplay_ShowUnitsUI(false)
+		_unitsDisplay.showUnitsUI = false
+		if Rule_Exists(UnitsDisplay_UpdateUnitsUI) then 
+			Rule_Remove(UnitsDisplay_UpdateUnitsUI)
+		end
+	end
+end
